@@ -1,0 +1,128 @@
+@startuml Zoom議事録自動生成システム ワークフロー
+
+title Zoom議事録自動生成システム - 全体ワークフロー
+
+actor "Zoomユーザー" as user
+participant "Zoom" as zoom
+participant "Webhook\nエンドポイント" as webhook
+database "Database" as db
+participant "文字起こし\n取得処理" as transcript
+participant "AI処理\nエンジン" as ai
+participant "Web UI" as ui
+
+== 会議録画フェーズ ==
+user -> zoom: Zoom会議を開催\n(クラウドレコーディング有効)
+zoom -> zoom: 会議録画中
+zoom -> zoom: 録画処理完了\n文字起こし生成
+
+== Webhook通知フェーズ ==
+zoom -> webhook: recording.completed\nイベント送信
+note right
+  ペイロード:
+  - meeting_id
+  - recording_id
+  - download_url
+  - download_token (24h有効)
+  - recording_files[]
+end note
+
+webhook -> db: 会議情報を保存
+note right
+  meetings テーブル:
+  - zoomMeetingId
+  - zoomRecordingId
+  - downloadUrl
+  - downloadToken
+  - status: "pending"
+end note
+
+== 文字起こし取得フェーズ ==
+webhook -> transcript: 文字起こし取得を開始
+transcript -> zoom: download_url + download_token\nで文字起こしファイルをダウンロード
+zoom --> transcript: VTT/テキストファイル
+transcript -> db: 文字起こしを保存
+note right
+  transcripts テーブル:
+  - meetingId
+  - fullText
+  - vttContent
+end note
+
+transcript -> db: 会議ステータス更新\n(status: "processing")
+
+== AI処理フェーズ ==
+transcript -> ai: 文字起こしテキストを送信
+ai -> ai: 会議種類判定
+note right
+  LLMで分析:
+  - 採用面接 or 通常会議
+  - 面接の場合: 1次/2次/最終
+end note
+
+alt 採用面接の場合
+    ai -> ai: 面接用プロンプトで処理
+    note right
+      生成内容:
+      - 候補者名
+      - 評価ポイント
+      - 推薦度
+      - 先方へのLINEメッセージ
+    end note
+else 通常会議の場合
+    ai -> ai: 通常会議用プロンプトで処理
+    note right
+      生成内容:
+      - 会議要約
+      - 主要ポイント
+      - 決定事項
+      - アクションアイテム
+    end note
+end
+
+ai -> db: 議事録を保存
+note right
+  minutes テーブル:
+  - summary
+  - keyPoints (JSON)
+  - decisions (JSON)
+  - evaluationPoints (JSON)
+  - lineMessage
+end note
+
+ai -> db: アクションアイテムを保存
+note right
+  actionItems テーブル:
+  - description
+  - assignee
+  - dueDate
+  - priority
+end note
+
+ai -> db: 会議ステータス更新\n(status: "completed")
+
+== ユーザー確認フェーズ ==
+user -> ui: Web UIにアクセス
+ui -> db: 会議一覧を取得
+db --> ui: 会議リスト
+ui --> user: 会議一覧を表示
+
+user -> ui: 会議詳細を表示
+ui -> db: 議事録・アクションアイテムを取得
+db --> ui: 詳細データ
+ui --> user: 議事録・評価・アクションアイテムを表示
+
+alt ユーザーがプロンプトをカスタマイズ
+    user -> ui: プロンプト編集
+    ui -> db: カスタムプロンプトを保存
+    user -> ui: 再処理を実行
+    ui -> ai: カスタムプロンプトで再処理
+    ai -> db: 更新された議事録を保存
+    ui --> user: 更新結果を表示
+end
+
+alt LINEメッセージをコピー
+    user -> ui: LINEメッセージをコピー
+    user -> user: 候補者にLINE送信
+end
+
+@enduml

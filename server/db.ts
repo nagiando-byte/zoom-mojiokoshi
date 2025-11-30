@@ -1,11 +1,22 @@
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { 
+  InsertUser, 
+  users, 
+  meetings, 
+  transcripts, 
+  minutes, 
+  actionItems,
+  InsertMeeting,
+  InsertTranscript,
+  InsertMinute,
+  InsertActionItem,
+  Meeting
+} from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -89,4 +100,107 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+// Meeting helpers
+export async function createMeeting(meeting: InsertMeeting) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(meetings).values(meeting);
+  return result;
+}
+
+export async function getMeetingByZoomId(zoomMeetingId: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(meetings).where(eq(meetings.zoomMeetingId, zoomMeetingId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function getAllMeetings() {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db.select().from(meetings);
+  return result;
+}
+
+export async function getMeetingById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(meetings).where(eq(meetings.id, id)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateMeeting(id: number, data: Partial<Meeting>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(meetings).set(data).where(eq(meetings.id, id));
+}
+
+// Transcript helpers
+export async function createTranscript(transcript: InsertTranscript) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(transcripts).values(transcript);
+  return result;
+}
+
+export async function getTranscriptByMeetingId(meetingId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(transcripts).where(eq(transcripts.meetingId, meetingId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+// Minutes helpers
+export async function createMinute(minute: InsertMinute) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(minutes).values(minute);
+  return result;
+}
+
+export async function getMinuteByMeetingId(meetingId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  
+  const result = await db.select().from(minutes).where(eq(minutes.meetingId, meetingId)).limit(1);
+  return result.length > 0 ? result[0] : undefined;
+}
+
+export async function updateMinute(meetingId: number, data: Partial<InsertMinute>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(minutes).set(data).where(eq(minutes.meetingId, meetingId));
+}
+
+// Action items helpers
+export async function createActionItem(actionItem: InsertActionItem) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  const result = await db.insert(actionItems).values(actionItem);
+  return result;
+}
+
+export async function getActionItemsByMeetingId(meetingId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  
+  const result = await db.select().from(actionItems).where(eq(actionItems.meetingId, meetingId));
+  return result;
+}
+
+export async function updateActionItem(id: number, data: Partial<InsertActionItem>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  
+  await db.update(actionItems).set(data).where(eq(actionItems.id, id));
+}
