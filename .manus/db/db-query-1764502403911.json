@@ -1,0 +1,9 @@
+{
+  "query": "DROP TABLE IF EXISTS actionItems, minutes, transcripts, meetings, promptTemplates, users;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 4DXh9yiKnjGoT5P.root --database LdST28YUD6p3sJouxpEMhm --execute DROP TABLE IF EXISTS actionItems, minutes, transcripts, meetings, promptTemplates, users;",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 3103
+}

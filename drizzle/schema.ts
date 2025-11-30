@@ -45,8 +45,18 @@ export const meetings = mysqlTable("meetings", {
   processingError: text("processingError"),
   
   // Meeting type classification
-  meetingType: mysqlEnum("meetingType", ["unknown", "interview", "regular"]).default("unknown"),
+  meetingType: mysqlEnum("meetingType", [
+    "unknown",
+    "interview",           // 採用面接
+    "internal_meeting",    // 社内会議
+    "client_meeting",      // 取引先との打ち合わせ
+    "one_on_one",          // 1on1
+    "training",            // 研修・トレーニング
+    "presentation",        // プレゼン・説明会
+    "other"                // その他
+  ]).default("unknown"),
   interviewStage: mysqlEnum("interviewStage", ["first", "second", "final", "other"]),
+  meetingSubType: text("meetingSubType"), // サブタイプ(例: 定例会議、商談、進捗確認など)
   
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
