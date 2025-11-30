@@ -42,7 +42,8 @@
 
 ## ドキュメント
 - [x] システムワークフロー図の作成(PlantUML)
-- [ ] README更新(セットアップ手順)
-- [ ] Zoom Webhook設定手順の記載
-- [ ] Zoom OAuth設定手順の記載
+- [x] README更新(セットアップ手順)
+- [x] Zoom Webhook設定手順の記載
+- [x] Zoom OAuth設定手順の記載
 - [x] 技術スタック概要ドキュメントの作成
+- [x] GitHubリポジトリへプッシュ
