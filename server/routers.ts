@@ -4,7 +4,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, protectedProcedure, router } from "./_core/trpc";
 import { getDb } from "./db";
 import { meetings, transcripts, minutes, actionItems, promptTemplates } from "../drizzle/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql, count } from "drizzle-orm";
 import { z } from "zod";
 import { processTranscriptWithAI } from "./aiService";
 
@@ -33,6 +33,56 @@ export const appRouter = router({
         .orderBy(desc(meetings.startTime));
 
       return result;
+    }),
+
+    // Get dashboard statistics
+    stats: protectedProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) {
+        return {
+          total: 0,
+          byStatus: { pending: 0, processing: 0, completed: 0, failed: 0 },
+          byType: {},
+          recentMeetings: [],
+        };
+      }
+
+      // Get all meetings for stats calculation
+      const allMeetings = await db
+        .select()
+        .from(meetings)
+        .orderBy(desc(meetings.startTime));
+
+      // Calculate status counts
+      const byStatus = {
+        pending: 0,
+        processing: 0,
+        completed: 0,
+        failed: 0,
+      };
+      
+      const byType: Record<string, number> = {};
+      
+      for (const meeting of allMeetings) {
+        // Count by status
+        if (meeting.status in byStatus) {
+          byStatus[meeting.status as keyof typeof byStatus]++;
+        }
+        
+        // Count by type
+        const type = meeting.meetingType || 'unknown';
+        byType[type] = (byType[type] || 0) + 1;
+      }
+
+      // Get recent meetings (last 5)
+      const recentMeetings = allMeetings.slice(0, 5);
+
+      return {
+        total: allMeetings.length,
+        byStatus,
+        byType,
+        recentMeetings,
+      };
     }),
 
     // Get meeting by ID with full details
