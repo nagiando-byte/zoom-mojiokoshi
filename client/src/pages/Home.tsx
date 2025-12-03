@@ -24,12 +24,9 @@ import { getLoginUrl } from "@/const";
 
 export default function Home() {
   const { user, loading: authLoading, isAuthenticated } = useAuth();
-  const { data: stats, isLoading: statsLoading } = trpc.meetings.stats.useQuery(
-    undefined,
-    { enabled: isAuthenticated }
-  );
+  const { data: stats, isLoading: statsLoading } = trpc.meetings.stats.useQuery();
 
-  // Login screen
+  // Login screen (デモモードのため、ログインスキップ可能)
   if (!authLoading && !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-50 via-white to-cyan-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
@@ -45,10 +42,15 @@ export default function Home() {
               会議の文字起こしと議事録を自動生成
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
-            <Button asChild className="w-full h-12 text-lg bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600" size="lg">
-              <a href={getLoginUrl()}>ログインして始める</a>
-            </Button>
+          <CardContent className="pt-6 space-y-3">
+            <Link href="/meetings">
+              <Button className="w-full h-12 text-lg bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600">
+                デモモードで始める
+              </Button>
+            </Link>
+            <p className="text-xs text-center text-muted-foreground">
+              認証なしで機能を確認できます
+            </p>
           </CardContent>
         </Card>
       </div>

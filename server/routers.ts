@@ -23,7 +23,7 @@ export const appRouter = router({
 
   meetings: router({
     // Get all meetings
-    list: protectedProcedure.query(async () => {
+    list: publicProcedure.query(async () => {
       const db = await getDb();
       if (!db) return [];
 
@@ -36,7 +36,7 @@ export const appRouter = router({
     }),
 
     // Get dashboard statistics
-    stats: protectedProcedure.query(async () => {
+    stats: publicProcedure.query(async () => {
       const db = await getDb();
       if (!db) {
         return {
@@ -72,7 +72,7 @@ export const appRouter = router({
     }),
 
     // Get meeting by ID with full details
-    getById: protectedProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const db = await getDb();
@@ -115,7 +115,7 @@ export const appRouter = router({
       }),
 
     // Reprocess meeting with optional custom prompt
-    reprocess: protectedProcedure
+    reprocess: publicProcedure
       .input(
         z.object({
           meetingId: z.number(),
@@ -145,7 +145,7 @@ export const appRouter = router({
 
   prompts: router({
     // Get all prompt templates
-    list: protectedProcedure.query(async () => {
+    list: publicProcedure.query(async () => {
       const db = await getDb();
       if (!db) return [];
 
@@ -154,7 +154,7 @@ export const appRouter = router({
     }),
 
     // Get prompt by ID
-    getById: protectedProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const db = await getDb();
@@ -170,7 +170,7 @@ export const appRouter = router({
       }),
 
     // Create new prompt template
-    create: protectedProcedure
+    create: publicProcedure
       .input(
         z.object({
           name: z.string(),
@@ -193,7 +193,7 @@ export const appRouter = router({
       }),
 
     // Update prompt template
-    update: protectedProcedure
+    update: publicProcedure
       .input(
         z.object({
           id: z.number(),
@@ -217,7 +217,7 @@ export const appRouter = router({
       }),
 
     // Delete prompt template
-    delete: protectedProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         const db = await getDb();
