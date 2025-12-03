@@ -35,6 +35,42 @@ export const appRouter = router({
       return result;
     }),
 
+    // Get dashboard statistics
+    stats: protectedProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) {
+        return {
+          total: 0,
+          byStatus: { pending: 0, processing: 0, completed: 0, failed: 0 },
+          byType: {},
+          recentMeetings: [],
+        };
+      }
+
+      const allMeetings = await db
+        .select()
+        .from(meetings)
+        .orderBy(desc(meetings.startTime));
+
+      const byStatus = { pending: 0, processing: 0, completed: 0, failed: 0 };
+      const byType: Record<string, number> = {};
+
+      for (const meeting of allMeetings) {
+        if (meeting.status in byStatus) {
+          byStatus[meeting.status as keyof typeof byStatus]++;
+        }
+        const type = meeting.meetingType || 'unknown';
+        byType[type] = (byType[type] || 0) + 1;
+      }
+
+      return {
+        total: allMeetings.length,
+        byStatus,
+        byType,
+        recentMeetings: allMeetings.slice(0, 5),
+      };
+    }),
+
     // Get meeting by ID with full details
     getById: protectedProcedure
       .input(z.object({ id: z.number() }))
