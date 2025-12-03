@@ -7,6 +7,7 @@ import { meetings, transcripts, minutes, actionItems, promptTemplates } from "..
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { processTranscriptWithAI } from "./aiService";
+import { mockMeetings, mockMeetingDetails } from "./mockData";
 
 export const appRouter = router({
   system: systemRouter,
@@ -25,7 +26,10 @@ export const appRouter = router({
     // Get all meetings
     list: publicProcedure.query(async () => {
       const db = await getDb();
-      if (!db) return [];
+      if (!db) {
+        // データベース未接続時はモックデータを返す
+        return mockMeetings;
+      }
 
       const result = await db
         .select()
@@ -39,11 +43,21 @@ export const appRouter = router({
     stats: publicProcedure.query(async () => {
       const db = await getDb();
       if (!db) {
+        // モックデータから統計を計算
+        const byStatus = { pending: 0, processing: 0, completed: 0, failed: 0 };
+        const byType: Record<string, number> = {};
+        
+        for (const meeting of mockMeetings) {
+          byStatus[meeting.status]++;
+          const type = meeting.meetingType || 'unknown';
+          byType[type] = (byType[type] || 0) + 1;
+        }
+        
         return {
-          total: 0,
-          byStatus: { pending: 0, processing: 0, completed: 0, failed: 0 },
-          byType: {},
-          recentMeetings: [],
+          total: mockMeetings.length,
+          byStatus,
+          byType,
+          recentMeetings: mockMeetings.slice(0, 5),
         };
       }
 
@@ -76,7 +90,28 @@ export const appRouter = router({
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const db = await getDb();
-        if (!db) return null;
+        if (!db) {
+          // モックデータから取得
+          const meeting = mockMeetings.find(m => m.id === input.id);
+          if (!meeting) return null;
+          
+          const details = mockMeetingDetails[input.id];
+          if (!details) {
+            return {
+              meeting,
+              transcript: null,
+              minutes: null,
+              actionItems: [],
+            };
+          }
+          
+          return {
+            meeting,
+            transcript: details.transcript || null,
+            minutes: details.minutes || null,
+            actionItems: details.actionItems || [],
+          };
+        }
 
         const [meeting] = await db
           .select()
