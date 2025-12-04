@@ -7,6 +7,7 @@ import { meetings, transcripts, minutes, actionItems, promptTemplates } from "..
 import { eq, desc } from "drizzle-orm";
 import { z } from "zod";
 import { processTranscriptWithAI } from "./aiService";
+import { mockMeetings, mockMeetingDetails } from "./mockData";
 
 export const appRouter = router({
   system: systemRouter,
@@ -23,9 +24,12 @@ export const appRouter = router({
 
   meetings: router({
     // Get all meetings
-    list: protectedProcedure.query(async () => {
+    list: publicProcedure.query(async () => {
       const db = await getDb();
-      if (!db) return [];
+      if (!db) {
+        // データベース未接続時はモックデータを返す
+        return mockMeetings;
+      }
 
       const result = await db
         .select()
@@ -35,12 +39,79 @@ export const appRouter = router({
       return result;
     }),
 
+    // Get dashboard statistics
+    stats: publicProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) {
+        // モックデータから統計を計算
+        const byStatus = { pending: 0, processing: 0, completed: 0, failed: 0 };
+        const byType: Record<string, number> = {};
+        
+        for (const meeting of mockMeetings) {
+          byStatus[meeting.status]++;
+          const type = meeting.meetingType || 'unknown';
+          byType[type] = (byType[type] || 0) + 1;
+        }
+        
+        return {
+          total: mockMeetings.length,
+          byStatus,
+          byType,
+          recentMeetings: mockMeetings.slice(0, 5),
+        };
+      }
+
+      const allMeetings = await db
+        .select()
+        .from(meetings)
+        .orderBy(desc(meetings.startTime));
+
+      const byStatus = { pending: 0, processing: 0, completed: 0, failed: 0 };
+      const byType: Record<string, number> = {};
+
+      for (const meeting of allMeetings) {
+        if (meeting.status in byStatus) {
+          byStatus[meeting.status as keyof typeof byStatus]++;
+        }
+        const type = meeting.meetingType || 'unknown';
+        byType[type] = (byType[type] || 0) + 1;
+      }
+
+      return {
+        total: allMeetings.length,
+        byStatus,
+        byType,
+        recentMeetings: allMeetings.slice(0, 5),
+      };
+    }),
+
     // Get meeting by ID with full details
-    getById: protectedProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const db = await getDb();
-        if (!db) return null;
+        if (!db) {
+          // モックデータから取得
+          const meeting = mockMeetings.find(m => m.id === input.id);
+          if (!meeting) return null;
+          
+          const details = mockMeetingDetails[input.id];
+          if (!details) {
+            return {
+              meeting,
+              transcript: null,
+              minutes: null,
+              actionItems: [],
+            };
+          }
+          
+          return {
+            meeting,
+            transcript: details.transcript || null,
+            minutes: details.minutes || null,
+            actionItems: details.actionItems || [],
+          };
+        }
 
         const [meeting] = await db
           .select()
@@ -79,7 +150,7 @@ export const appRouter = router({
       }),
 
     // Reprocess meeting with optional custom prompt
-    reprocess: protectedProcedure
+    reprocess: publicProcedure
       .input(
         z.object({
           meetingId: z.number(),
@@ -109,7 +180,7 @@ export const appRouter = router({
 
   prompts: router({
     // Get all prompt templates
-    list: protectedProcedure.query(async () => {
+    list: publicProcedure.query(async () => {
       const db = await getDb();
       if (!db) return [];
 
@@ -118,7 +189,7 @@ export const appRouter = router({
     }),
 
     // Get prompt by ID
-    getById: protectedProcedure
+    getById: publicProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ input }) => {
         const db = await getDb();
@@ -134,7 +205,7 @@ export const appRouter = router({
       }),
 
     // Create new prompt template
-    create: protectedProcedure
+    create: publicProcedure
       .input(
         z.object({
           name: z.string(),
@@ -157,7 +228,7 @@ export const appRouter = router({
       }),
 
     // Update prompt template
-    update: protectedProcedure
+    update: publicProcedure
       .input(
         z.object({
           id: z.number(),
@@ -181,7 +252,7 @@ export const appRouter = router({
       }),
 
     // Delete prompt template
-    delete: protectedProcedure
+    delete: publicProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ input }) => {
         const db = await getDb();
